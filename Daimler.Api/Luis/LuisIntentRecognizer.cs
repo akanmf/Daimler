@@ -13,6 +13,7 @@ namespace Daimler.Api.Luis
     public class LuisIntentRecognizer : IRecognizer
     {
         private readonly LuisRecognizer _recognizer;
+        
 
         public LuisIntentRecognizer(IConfiguration configuration)
         {
@@ -25,6 +26,7 @@ namespace Daimler.Api.Luis
                     "https://" + configuration["LuisAPIHostName"]);
 
                 _recognizer = new LuisRecognizer(luisApplication);
+             
             }
         }
 

@@ -38,6 +38,18 @@ namespace Daimler.Api
             // Register LUIS recognizer
             services.AddSingleton<LuisIntentRecognizer>();
 
+            var storage = new MemoryStorage();
+
+            //User statei register ediyoruz
+            var userState = new UserState(storage);
+            services.AddSingleton(userState);
+
+            // Conversation state i register ediyoruz
+            var conversationState = new ConversationState(storage);
+            services.AddSingleton(conversationState);
+
+
+
             services.AddControllers();
         }
 
