@@ -65,7 +65,7 @@ namespace Daimler.Api.Bot
                     break;
                 case PdwResetStates.Completed:
                     await turnContext.SendActivityAsync($"İşleminiz tamamlanmıştır.");
-                    await turnContext.SendActivityAsync("Size başka bir konuda yardımcı olmamı istersiniz?");
+                    await turnContext.SendActivityAsync("Size başka bir konuda yardımcı olmamı ister misiniz?");
                     conversationState.CurrentState = PdwResetStates.Initial;
                     break;
 
@@ -73,7 +73,7 @@ namespace Daimler.Api.Bot
 
         }
 
-        private static async Task GetApprovalOperations(ITurnContext<IMessageActivity> turnContext, PwdResetConversationStates conversationState, UserPasswordInfo userState)
+        private async Task GetApprovalOperations(ITurnContext<IMessageActivity> turnContext, PwdResetConversationStates conversationState, UserPasswordInfo userState)
         {
             var approveText = turnContext.Activity.Text.Trim().ToLower();
 
@@ -97,7 +97,7 @@ namespace Daimler.Api.Bot
             }
         }
 
-        private static async Task<UserPasswordInfo> GetInfoOperations(ITurnContext<IMessageActivity> turnContext, PwdResetConversationStates conversationState)
+        private async Task<UserPasswordInfo> GetInfoOperations(ITurnContext<IMessageActivity> turnContext, PwdResetConversationStates conversationState)
         {
             UserPasswordInfo userState = JsonConvert.DeserializeObject<UserPasswordInfo>(turnContext.Activity.Value.ToString());
 
@@ -105,6 +105,11 @@ namespace Daimler.Api.Bot
             if (!UserNameValidator.Validate(userState.UserName))
             {
                 await turnContext.SendActivityAsync("Kullanıcı adınızı hatalı girdiniz. Lütfen bilgileri tekrar giriniz");
+
+                Activity t = new Activity();
+                t.Type = ActivityTypes.Message;
+                t.Attachments = new List<Attachment>() { CreateAdaptiveCardUsingJson() };
+                await turnContext.SendActivityAsync(t);
             }
             else
             {
