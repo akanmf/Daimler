@@ -1,0 +1,72 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.0",
+  "body": [
+    {
+      "type": "ColumnSet",
+      "columns": [
+        {
+          "type": "Column",
+          "width": 2,
+          "items": [
+            {
+              "type": "TextBlock",
+              "text": "Sifre Resetleme Talep Formu",
+              "weight": "Bolder",
+              "size": "Medium"
+            },
+            {
+              "type": "TextBlock",
+              "text": "Lutfen tum bilgileri doldurunuz.",
+              "isSubtle": true,
+              "wrap": true
+            },
+            {
+              "type": "TextBlock",
+              "text": "Application Name",
+              "wrap": true
+            },
+            {
+              "type": "Input.Text",
+              "id": "Application",
+              "placeholder": "Lutfen Application Name Giriniz."
+            },
+            {
+              "type": "TextBlock",
+              "text": "E-Mail",
+              "wrap": true
+            },
+            {
+              "type": "Input.Text",
+              "id": "Email",
+              "placeholder": "mail@daimler.com",
+              "style": "Email"
+            },
+            {
+              "type": "TextBlock",
+              "text": "Username"
+            },
+            {
+              "type": "Input.Text",
+              "id": "UserName",
+              "placeholder": "Username Giriniz",
+              "style": "Tel"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.Submit",
+      "title": "Gonder",
+      "requiredInputs": [
+        "Application",
+        "Email",
+        "UserName"
+      ]
+    }
+  ]
+}

@@ -1,9 +1,13 @@
-﻿using Daimler.Api.Luis;
+﻿using AdaptiveCards;
+using Daimler.Api.Luis;
 using Daimler.Api.States;
+using Daimler.Api.Validators;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Schema;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -32,7 +36,7 @@ namespace Daimler.Api.Bot
 
             var conversationStateAccessors = _convStateAccesor.CreateProperty<PwdResetConversationStates>(nameof(PwdResetConversationStates));
             var conversationState = await conversationStateAccessors.GetAsync(turnContext, () => new PwdResetConversationStates());
-            conversationState = PwdResetConversationStates.Initial;
+            conversationState.CurrentState = PdwResetStates.Initial;
 
             await turnContext.SendActivityAsync("Merhaba. Size hangi konuda yardımcı olmamı istersiniz?");
 
@@ -48,12 +52,11 @@ namespace Daimler.Api.Bot
             var userStateAccessors = _userStateAccesor.CreateProperty<UserPasswordInfo>(nameof(UserPasswordInfo));
             var userState = await userStateAccessors.GetAsync(turnContext, () => new UserPasswordInfo());
 
-
-            var inputText = turnContext.Activity.Text.Trim().ToLower();
-
-            switch (conversationState)
+            switch (conversationState.CurrentState)
             {
-                case PwdResetConversationStates.Initial:   // Sadece initial state 'te iken luis sorgusu olacak
+                case PdwResetStates.Initial:   // Sadece initial state 'te iken luis sorgusu olacak
+
+                    var inputText = turnContext.Activity.Text.Trim().ToLower();
                     //TODO: LUIS e input texti gönder....
                     var luisResult = await _luisRecognizer.RecognizeAsync(turnContext, cancellationToken);
 
@@ -74,21 +77,59 @@ namespace Daimler.Api.Bot
                         return;
                     }
 
-                    conversationState = PwdResetConversationStates.GetInfo;
-                    break;
-                case PwdResetConversationStates.GetInfo:
+                    await turnContext.SendActivityAsync("Talebinizi gerçekleştirebilmemiz için aşağıdaki bilgileri doldurunuz.");
 
+                    Activity t = new Activity();
+                    t.Type = ActivityTypes.Message;
+                    t.Attachments = new List<Attachment>() { CreateAdaptiveCardUsingJson() };
+                    await turnContext.SendActivityAsync(t, cancellationToken);
 
+                    conversationState.CurrentState = PdwResetStates.GetInfo;
 
                     break;
-                default:
+                case PdwResetStates.GetInfo:
+
+                    userState = JsonConvert.DeserializeObject<UserPasswordInfo>(turnContext.Activity.Value.ToString());
+
+                    // Kullanıcı adı validasyonu
+                    if (!UserNameValidator.Validate(userState.UserName))
+                    {
+                        await turnContext.SendActivityAsync("Kullanıcı adınızı hatalı girdiniz. Lütfen bilgileri tekrar giriniz");
+                        return;
+                    }
+                    
+                    await turnContext.SendActivityAsync($"{userState.UserName} için şifreniz resetlenecektir. Onaylıyor musunuz?");
+
+                    conversationState.CurrentState = PdwResetStates.GetApproval;
+
                     break;
+                case PdwResetStates.GetApproval:
+
+                    var approveText = turnContext.Activity.Text.Trim().ToLower();
+
+                    if (approveText=="evet")
+                    {
+                        await turnContext.SendActivityAsync($"{userState.UserName} talebiniz alınmıştır");
+                        conversationState.CurrentState = PdwResetStates.Completed;
+                        return;
+                    }
+                    else if (approveText=="hayır")
+                    {
+                        await turnContext.SendActivityAsync($"{userState.UserName} talebiniz iptal edilmiştir.");
+                        conversationState.CurrentState = PdwResetStates.Completed;
+                        return;
+                    }
+
+                    await turnContext.SendActivityAsync($"Sizi anlayamadım");
+
+                    break;
+                case PdwResetStates.Completed:
+                    await turnContext.SendActivityAsync($"İşleminiz tamamlanmıştır.");
+                    await turnContext.SendActivityAsync("Size başka bir konuda yardımcı olmamı istersiniz?");
+                    conversationState.CurrentState = PdwResetStates.Initial;
+                    break;
+
             }
-
-
-
-            await turnContext.SendActivityAsync("Şifre resetleme işine başlıyorum.");
-
 
         }
 
@@ -97,6 +138,17 @@ namespace Daimler.Api.Bot
             await base.OnTurnAsync(turnContext, cancellationToken);
             await _convStateAccesor.SaveChangesAsync(turnContext, true, cancellationToken);
             await _userStateAccesor.SaveChangesAsync(turnContext, true, cancellationToken);
+        }
+
+
+
+        private Attachment CreateAdaptiveCardUsingJson()
+        {
+            return new Attachment
+            {
+                ContentType = AdaptiveCard.ContentType,
+                Content = AdaptiveCard.FromJson(File.ReadAllText("AdaptiveCards\\AdaptiveCard.json")).Card
+            };
         }
     }
 }

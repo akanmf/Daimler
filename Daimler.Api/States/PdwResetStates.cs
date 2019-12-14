@@ -5,8 +5,11 @@ using System.Threading.Tasks;
 
 namespace Daimler.Api.States
 {
-    public class PwdResetConversationStates
+    public enum PdwResetStates
     {
-        public PdwResetStates CurrentState { get; set; }
+        Initial,
+        GetInfo,
+        GetApproval,
+        Completed
     }
 }
