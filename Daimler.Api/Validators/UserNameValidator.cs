@@ -9,6 +9,8 @@ namespace Daimler.Api.Validators
     {
         public static bool Validate(string userName)
         {
+            //TODO: Database den sorgu yapılmalı
+
             return (!string.IsNullOrWhiteSpace(userName));
         }
     }

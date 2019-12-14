@@ -55,73 +55,13 @@ namespace Daimler.Api.Bot
             switch (conversationState.CurrentState)
             {
                 case PdwResetStates.Initial:   // Sadece initial state 'te iken luis sorgusu olacak
-
-                    var inputText = turnContext.Activity.Text.Trim().ToLower();
-                    //TODO: LUIS e input texti gönder....
-                    var luisResult = await _luisRecognizer.RecognizeAsync(turnContext, cancellationToken);
-
-                    if (luisResult.Intents.OrderBy(i => i.Value.Score).FirstOrDefault().Key != "SifreReset")
-                    {
-
-                        if (userState.Counter > 2)
-                        {
-                            await turnContext.SendActivityAsync("Sadece şifre resetleme yapabiliyorum diyorum. Niye inat ediyosun");
-                            userState.Counter = 0;
-                        }
-                        else
-                        {
-                            await turnContext.SendActivityAsync("Sadece şifre resetleme yapabilirim.");
-                            userState.Counter++;
-                        }
-
-                        return;
-                    }
-
-                    await turnContext.SendActivityAsync("Talebinizi gerçekleştirebilmemiz için aşağıdaki bilgileri doldurunuz.");
-
-                    Activity t = new Activity();
-                    t.Type = ActivityTypes.Message;
-                    t.Attachments = new List<Attachment>() { CreateAdaptiveCardUsingJson() };
-                    await turnContext.SendActivityAsync(t, cancellationToken);
-
-                    conversationState.CurrentState = PdwResetStates.GetInfo;
-
+                    await InitialStateOperations(turnContext, conversationState, userState, cancellationToken);
                     break;
                 case PdwResetStates.GetInfo:
-
-                    userState = JsonConvert.DeserializeObject<UserPasswordInfo>(turnContext.Activity.Value.ToString());
-
-                    // Kullanıcı adı validasyonu
-                    if (!UserNameValidator.Validate(userState.UserName))
-                    {
-                        await turnContext.SendActivityAsync("Kullanıcı adınızı hatalı girdiniz. Lütfen bilgileri tekrar giriniz");
-                        return;
-                    }
-                    
-                    await turnContext.SendActivityAsync($"{userState.UserName} için şifreniz resetlenecektir. Onaylıyor musunuz?");
-
-                    conversationState.CurrentState = PdwResetStates.GetApproval;
-
+                    userState = await GetInfoOperations(turnContext, conversationState);
                     break;
                 case PdwResetStates.GetApproval:
-
-                    var approveText = turnContext.Activity.Text.Trim().ToLower();
-
-                    if (approveText=="evet")
-                    {
-                        await turnContext.SendActivityAsync($"{userState.UserName} talebiniz alınmıştır");
-                        conversationState.CurrentState = PdwResetStates.Completed;
-                        return;
-                    }
-                    else if (approveText=="hayır")
-                    {
-                        await turnContext.SendActivityAsync($"{userState.UserName} talebiniz iptal edilmiştir.");
-                        conversationState.CurrentState = PdwResetStates.Completed;
-                        return;
-                    }
-
-                    await turnContext.SendActivityAsync($"Sizi anlayamadım");
-
+                    await GetApprovalOperations(turnContext, conversationState, userState);
                     break;
                 case PdwResetStates.Completed:
                     await turnContext.SendActivityAsync($"İşleminiz tamamlanmıştır.");
@@ -133,6 +73,50 @@ namespace Daimler.Api.Bot
 
         }
 
+        private static async Task GetApprovalOperations(ITurnContext<IMessageActivity> turnContext, PwdResetConversationStates conversationState, UserPasswordInfo userState)
+        {
+            var approveText = turnContext.Activity.Text.Trim().ToLower();
+
+            // onaylıyorum, tamam gibi intentler luise eklenebilir.
+            if (approveText == "evet")
+            {
+                await turnContext.SendActivityAsync($"{userState.UserName} talebiniz alınmıştır");
+                conversationState.CurrentState = PdwResetStates.Completed;
+                Operations.ExcelCreator.Create(userState);
+
+            }
+            else if (approveText == "hayır")
+            {
+                await turnContext.SendActivityAsync($"{userState.UserName} talebiniz iptal edilmiştir.");
+                conversationState.CurrentState = PdwResetStates.Completed;
+
+            }
+            else
+            {
+                await turnContext.SendActivityAsync($"Sizi anlayamadım");
+            }
+        }
+
+        private static async Task<UserPasswordInfo> GetInfoOperations(ITurnContext<IMessageActivity> turnContext, PwdResetConversationStates conversationState)
+        {
+            UserPasswordInfo userState = JsonConvert.DeserializeObject<UserPasswordInfo>(turnContext.Activity.Value.ToString());
+
+            // Kullanıcı adı validasyonu
+            if (!UserNameValidator.Validate(userState.UserName))
+            {
+                await turnContext.SendActivityAsync("Kullanıcı adınızı hatalı girdiniz. Lütfen bilgileri tekrar giriniz");
+            }
+            else
+            {
+                await turnContext.SendActivityAsync($"{userState.UserName} için şifreniz resetlenecektir. Onaylıyor musunuz?");
+
+                conversationState.CurrentState = PdwResetStates.GetApproval;
+            }
+
+            //TODO: Email validasyonu yapılmalı
+            return userState;
+        }
+
         public async override Task OnTurnAsync(ITurnContext turnContext, CancellationToken cancellationToken = default)
         {
             await base.OnTurnAsync(turnContext, cancellationToken);
@@ -140,6 +124,40 @@ namespace Daimler.Api.Bot
             await _userStateAccesor.SaveChangesAsync(turnContext, true, cancellationToken);
         }
 
+        private async Task InitialStateOperations(ITurnContext<IMessageActivity> turnContext, PwdResetConversationStates conversationState, UserPasswordInfo userState, CancellationToken cancellationToken)
+        {
+            var inputText = turnContext.Activity.Text.Trim().ToLower();
+            //TODO: LUIS e input texti gönder....
+            var luisResult = await _luisRecognizer.RecognizeAsync(turnContext, cancellationToken);
+
+            if (luisResult.Intents.OrderBy(i => i.Value.Score).FirstOrDefault().Key != "SifreReset")
+            {
+
+                if (userState.Counter > 2)
+                {
+                    await turnContext.SendActivityAsync("Sadece şifre resetleme yapabiliyorum diyorum. Niye inat ediyosun");
+                    userState.Counter = 0;
+                }
+                else
+                {
+                    await turnContext.SendActivityAsync("Sadece şifre resetleme yapabilirim.");
+                    userState.Counter++;
+                }
+
+
+            }
+            else
+            {
+                await turnContext.SendActivityAsync("Talebinizi gerçekleştirebilmemiz için aşağıdaki bilgileri doldurunuz.");
+
+                Activity t = new Activity();
+                t.Type = ActivityTypes.Message;
+                t.Attachments = new List<Attachment>() { CreateAdaptiveCardUsingJson() };
+                await turnContext.SendActivityAsync(t, cancellationToken);
+
+                conversationState.CurrentState = PdwResetStates.GetInfo;
+            }
+        }
 
 
         private Attachment CreateAdaptiveCardUsingJson()
