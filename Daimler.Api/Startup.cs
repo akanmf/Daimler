@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Daimler.Api.Bot;
+using Daimler.Api.Luis;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -34,6 +35,8 @@ namespace Daimler.Api
             // Create the bot as a transient. In this case the ASP Controller is expecting an IBot.  
             services.AddTransient<IBot, EchoBot>();
 
+            // Register LUIS recognizer
+            services.AddSingleton<LuisIntentRecognizer>();
 
             services.AddControllers();
         }
