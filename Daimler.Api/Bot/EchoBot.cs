@@ -20,13 +20,15 @@ namespace Daimler.Api.Bot
         private LuisIntentRecognizer _luisRecognizer;
         private UserState _userStateAccesor;
         private ConversationState _convStateAccesor;
+        //private UserPasswordInfo _userCompleted;
 
-
+        //public EchoBot(LuisIntentRecognizer luisRecognizer, UserState userStateAccesor, ConversationState convStateAccesor, UserPasswordInfo userCompleted)
         public EchoBot(LuisIntentRecognizer luisRecognizer, UserState userStateAccesor, ConversationState convStateAccesor)
         {
             _luisRecognizer = luisRecognizer;
             _userStateAccesor = userStateAccesor;
             _convStateAccesor = convStateAccesor;
+            //_userCompleted = userCompleted;
         }
 
 
@@ -52,16 +54,24 @@ namespace Daimler.Api.Bot
             var userStateAccessors = _userStateAccesor.CreateProperty<UserPasswordInfo>(nameof(UserPasswordInfo));
             var userState = await userStateAccessors.GetAsync(turnContext, () => new UserPasswordInfo());
 
+            var _userCompleted = await userStateAccessors.GetAsync(turnContext, () => new UserPasswordInfo());
+
             switch (conversationState.CurrentState)
             {
                 case PdwResetStates.Initial:   // Sadece initial state 'te iken luis sorgusu olacak
                     await InitialStateOperations(turnContext, conversationState, userState, cancellationToken);
                     break;
                 case PdwResetStates.GetInfo:
-                    userState = await GetInfoOperations(turnContext, conversationState);
+                  var userFromAdaptiveCard = await GetInfoOperations(turnContext, conversationState, userState);
+
+                    userState.Application = userFromAdaptiveCard.Application;
+                    userState.UserName = userFromAdaptiveCard.UserName;
+                    userState.Email = userFromAdaptiveCard.Email;
+                    userState.Counter = userFromAdaptiveCard.Counter;
+
                     break;
                 case PdwResetStates.GetApproval:
-                    await GetApprovalOperations(turnContext, conversationState, userState);
+                    await GetApprovalOperations(turnContext, conversationState, _userCompleted);
                     break;
                 case PdwResetStates.Completed:
                     await turnContext.SendActivityAsync($"İşleminiz tamamlanmıştır.");
@@ -97,29 +107,73 @@ namespace Daimler.Api.Bot
             }
         }
 
-        private async Task<UserPasswordInfo> GetInfoOperations(ITurnContext<IMessageActivity> turnContext, PwdResetConversationStates conversationState)
+        private async Task<UserPasswordInfo> GetInfoOperations(ITurnContext<IMessageActivity> turnContext, PwdResetConversationStates conversationState, UserPasswordInfo userState)
         {
-            UserPasswordInfo userState = JsonConvert.DeserializeObject<UserPasswordInfo>(turnContext.Activity.Value.ToString());
+            UserPasswordInfo userStateFromAdaptiveCard = JsonConvert.DeserializeObject<UserPasswordInfo>(turnContext.Activity.Value.ToString());
 
             // Kullanıcı adı validasyonu
-            if (!UserNameValidator.Validate(userState.UserName))
+            if (!UserNameValidator.Validate(userStateFromAdaptiveCard.UserName))
             {
                 await turnContext.SendActivityAsync("Kullanıcı adınızı hatalı girdiniz. Lütfen bilgileri tekrar giriniz");
+                userStateFromAdaptiveCard.Counter++;
+                if (userStateFromAdaptiveCard.Counter < 3)
+                {
+                    Activity t = new Activity();
+                    t.Type = ActivityTypes.Message;
+                    t.Attachments = new List<Attachment>() { CreateAdaptiveCardUsingJson() };
+                    await turnContext.SendActivityAsync(t);
+                }
+                else
+                {
+                    await turnContext.SendActivityAsync("3 kez hatalı giriş yaptınız.");
+                    conversationState.CurrentState = PdwResetStates.Completed;
+                }   
 
-                Activity t = new Activity();
-                t.Type = ActivityTypes.Message;
-                t.Attachments = new List<Attachment>() { CreateAdaptiveCardUsingJson() };
-                await turnContext.SendActivityAsync(t);
+            }
+            else if (!EmailValidator.Validate(userStateFromAdaptiveCard.Email))
+            {
+                await turnContext.SendActivityAsync("Email bilgisini hatalı girdiniz. Lütfen bilgileri tekrar giriniz");
+                userStateFromAdaptiveCard.Counter++;
+                if (userStateFromAdaptiveCard.Counter < 3)
+                {
+                    Activity t = new Activity();
+                    t.Type = ActivityTypes.Message;
+                    t.Attachments = new List<Attachment>() { CreateAdaptiveCardUsingJson() };
+                    await turnContext.SendActivityAsync(t);
+                }
+                else
+                {
+                    await turnContext.SendActivityAsync("3 kez hatalı giriş yaptınız.");
+                    conversationState.CurrentState = PdwResetStates.Completed;
+                }
+
+            }
+            else if(!ApplicationValidator.Validate(userStateFromAdaptiveCard.Application))
+            {
+                await turnContext.SendActivityAsync("Application bilgisini hatalı girdiniz. Lütfen bilgileri tekrar giriniz");
+                userStateFromAdaptiveCard.Counter++;
+                if (userStateFromAdaptiveCard.Counter < 3)
+                {
+                    Activity t = new Activity();
+                    t.Type = ActivityTypes.Message;
+                    t.Attachments = new List<Attachment>() { CreateAdaptiveCardUsingJson() };
+                    await turnContext.SendActivityAsync(t);
+                }
+                else
+                {
+                    await turnContext.SendActivityAsync("3 kez hatalı giriş yaptınız.");
+                    conversationState.CurrentState = PdwResetStates.Completed;
+                }
             }
             else
             {
-                await turnContext.SendActivityAsync($"{userState.UserName} için şifreniz resetlenecektir. Onaylıyor musunuz?");
+                await turnContext.SendActivityAsync($"{userStateFromAdaptiveCard.UserName} için şifreniz resetlenecektir. Onaylıyor musunuz?");
 
                 conversationState.CurrentState = PdwResetStates.GetApproval;
-            }
 
-            //TODO: Email validasyonu yapılmalı
-            return userState;
+            }
+            return userStateFromAdaptiveCard;
+
         }
 
         public async override Task OnTurnAsync(ITurnContext turnContext, CancellationToken cancellationToken = default)

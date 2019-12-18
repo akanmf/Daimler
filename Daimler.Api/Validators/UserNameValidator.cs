@@ -12,9 +12,14 @@ namespace Daimler.Api.Validators
         {
             //TODO: Database den sorgu yapılmalı
 
-            DaimlerDBContext context = new DaimlerDBContext();
-            var userExists = context.UserInformation.Where(x => x.UserName == userName).Any();
-            return userExists;
+            //DaimlerDBContext context = new DaimlerDBContext();
+            //var userExists = context.UserInformation.Where(x => x.UserName == userName).Any();
+            //return userExists;
+            if (userName != "")
+                return true;
+            else
+                return false;
+
         }
     }
 }

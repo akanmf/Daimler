@@ -1,6 +1,8 @@
-{
+﻿{
   "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
   "type": "AdaptiveCard",
+  "inputNecessityIndicators": "requiredInputs",
+  "displayInputSuccessIndicators": true,
   "version": "1.0",
   "body": [
     {
@@ -30,7 +32,10 @@
             {
               "type": "Input.Text",
               "id": "Application",
-              "placeholder": "Lutfen Application Name Giriniz."
+              "placeholder": "Lutfen Application Name Giriniz.",
+              "isRequired": true,
+              "regex": "^\\w{5,50}$",
+              "errorMessage": "Application must be between 5 and 50 characters long."
             },
             {
               "type": "TextBlock",
@@ -41,17 +46,24 @@
               "type": "Input.Text",
               "id": "Email",
               "placeholder": "mail@daimler.com",
-              "style": "Email"
+              "style": "Email",
+              "isRequired": true,
+              "regex": "^\\w{5,50}$",
+              "errorMessage": "Email must be between 5 and 50 characters long."
             },
             {
               "type": "TextBlock",
-              "text": "Username"
+              "text": "Username",
+              "wrap": true
             },
             {
               "type": "Input.Text",
               "id": "UserName",
               "placeholder": "Username Giriniz",
-              "style": "Tel"
+              "style": "Tel",
+              "isRequired": true,
+              "regex": "^\\w{5,50}$",
+              "errorMessage": "Username must be between 5 and 50 characters long."
             }
           ]
         }
