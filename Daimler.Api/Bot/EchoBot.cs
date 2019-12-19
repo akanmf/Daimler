@@ -30,7 +30,6 @@ namespace Daimler.Api.Bot
             _convStateAccesor = convStateAccesor;
         }
 
-
         protected async override Task OnMembersAddedAsync(IList<ChannelAccount> membersAdded, ITurnContext<IConversationUpdateActivity> turnContext, CancellationToken cancellationToken)
         {
             await base.OnMembersAddedAsync(membersAdded, turnContext, cancellationToken);
