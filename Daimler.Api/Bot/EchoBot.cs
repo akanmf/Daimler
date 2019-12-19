@@ -9,8 +9,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Excel = Microsoft.Office.Interop.Excel;
 
 namespace Daimler.Api.Bot
 {
@@ -20,15 +22,12 @@ namespace Daimler.Api.Bot
         private LuisIntentRecognizer _luisRecognizer;
         private UserState _userStateAccesor;
         private ConversationState _convStateAccesor;
-        //private UserPasswordInfo _userCompleted;
-
-        //public EchoBot(LuisIntentRecognizer luisRecognizer, UserState userStateAccesor, ConversationState convStateAccesor, UserPasswordInfo userCompleted)
+       
         public EchoBot(LuisIntentRecognizer luisRecognizer, UserState userStateAccesor, ConversationState convStateAccesor)
         {
             _luisRecognizer = luisRecognizer;
             _userStateAccesor = userStateAccesor;
             _convStateAccesor = convStateAccesor;
-            //_userCompleted = userCompleted;
         }
 
 
@@ -71,7 +70,7 @@ namespace Daimler.Api.Bot
 
                     break;
                 case PdwResetStates.GetApproval:
-                    await GetApprovalOperations(turnContext, conversationState, _userCompleted);
+                    await GetApprovalOperations(turnContext, conversationState, userState);
                     break;
                 case PdwResetStates.Completed:
                     await turnContext.SendActivityAsync($"İşleminiz tamamlanmıştır.");
@@ -83,17 +82,41 @@ namespace Daimler.Api.Bot
 
         }
 
-        private async Task GetApprovalOperations(ITurnContext<IMessageActivity> turnContext, PwdResetConversationStates conversationState, UserPasswordInfo userState)
+        public async Task GetApprovalOperations(ITurnContext<IMessageActivity> turnContext, PwdResetConversationStates conversationState, UserPasswordInfo userState)
         {
             var approveText = turnContext.Activity.Text.Trim().ToLower();
 
             // onaylıyorum, tamam gibi intentler luise eklenebilir.
             if (approveText == "evet")
             {
-                await turnContext.SendActivityAsync($"{userState.UserName} talebiniz alınmıştır");
+                await turnContext.SendActivityAsync($"Sayın {userState.UserName}, {userState.Application} uygulaması için şifre reset talebiniz alınmıştır.");
                 conversationState.CurrentState = PdwResetStates.Completed;
-                Operations.ExcelCreator.Create(userState);
+                //Operations.ExcelCreator.Create(userState);
 
+                //TODO exceli burada oluştur
+                Excel.Application xlApp = new Microsoft.Office.Interop.Excel.Application();
+                Excel.Workbook xlWorkBook;
+                Excel.Worksheet xlWorkSheet;
+                object misValue = System.Reflection.Missing.Value;
+
+                xlWorkBook = xlApp.Workbooks.Add(misValue);
+                xlWorkSheet = (Excel.Worksheet)xlWorkBook.Worksheets.get_Item(1);
+
+                xlWorkSheet.Cells[1, 1] = "Application Name";
+                xlWorkSheet.Cells[1, 2] = "Email";
+                xlWorkSheet.Cells[1, 3] = "Username";
+                xlWorkSheet.Cells[2, 1] = userState.Application;
+                xlWorkSheet.Cells[2, 3] = userState.UserName;
+                xlWorkSheet.Cells[2, 2] = userState.Email;
+
+                xlApp.DisplayAlerts = false;
+                xlWorkBook.SaveAs("C:\\Users\\GunsuEskicioglu\\Desktop\\DaimlerChatbot\\" + userState.UserName + ".xlsx", Excel.XlFileFormat.xlOpenXMLWorkbook, misValue, misValue, misValue, misValue, Excel.XlSaveAsAccessMode.xlExclusive, misValue, misValue, misValue, misValue, misValue);
+                xlWorkBook.Close(true, misValue, misValue);
+                xlApp.Quit();
+
+                Marshal.ReleaseComObject(xlWorkSheet);
+                Marshal.ReleaseComObject(xlWorkBook);
+                Marshal.ReleaseComObject(xlApp);
             }
             else if (approveText == "hayır")
             {
