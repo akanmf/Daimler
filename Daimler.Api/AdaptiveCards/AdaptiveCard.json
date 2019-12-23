@@ -13,6 +13,14 @@
           "width": 2,
           "items": [
             {
+              "type": "Image",
+              "altText": "",
+              "url": "https://logos-download.com/wp-content/uploads/2016/02/Mercedes_Benz_logo_gradient.svg",
+              "width": "40px",
+              "horizontalAlignment": "Center",
+              "height": "40px"
+            },
+            {
               "type": "TextBlock",
               "text": "Sifre Resetleme Talep Formu",
               "weight": "Bolder",
@@ -30,12 +38,24 @@
               "wrap": true
             },
             {
-              "type": "Input.Text",
-              "id": "Application",
-              "placeholder": "Lutfen Application Name Giriniz.",
-              "isRequired": true,
-              "regex": "^\\w{5,50}$",
-              "errorMessage": "Application must be between 5 and 50 characters long."
+              "type": "Input.ChoiceSet",
+              "placeholder": "Placeholder text",
+              "choices": [
+                {
+                  "title": "Go",
+                  "value": "Go"
+                },
+                {
+                  "title": "Gems",
+                  "value": "Gems"
+                },
+                {
+                  "title": "Autoline",
+                  "value": "Autoline"
+                }
+              ],
+              "style": "expanded",
+              "id": "Application"
             },
             {
               "type": "TextBlock",

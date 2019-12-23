@@ -33,7 +33,7 @@ namespace Daimler.Api
             services.AddSingleton<IAdapterIntegration, BotFrameworkHttpAdapter>();
 
             // Create the bot as a transient. In this case the ASP Controller is expecting an IBot.  
-            services.AddTransient<IBot, EchoBot>();
+            services.AddTransient<IBot, DaimlerBot>();
 
             // Register LUIS recognizer
             services.AddSingleton<LuisIntentRecognizer>();

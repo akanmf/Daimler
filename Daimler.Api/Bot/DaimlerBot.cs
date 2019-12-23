@@ -9,21 +9,19 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Excel = Microsoft.Office.Interop.Excel;
 
 namespace Daimler.Api.Bot
 {
-    public class EchoBot : ActivityHandler
+    public class DaimlerBot : ActivityHandler
     {
 
         private LuisIntentRecognizer _luisRecognizer;
         private UserState _userStateAccesor;
         private ConversationState _convStateAccesor;
        
-        public EchoBot(LuisIntentRecognizer luisRecognizer, UserState userStateAccesor, ConversationState convStateAccesor)
+        public DaimlerBot(LuisIntentRecognizer luisRecognizer, UserState userStateAccesor, ConversationState convStateAccesor)
         {
             _luisRecognizer = luisRecognizer;
             _userStateAccesor = userStateAccesor;
@@ -69,7 +67,7 @@ namespace Daimler.Api.Bot
 
                     break;
                 case PdwResetStates.GetApproval:
-                    await GetApprovalOperations(turnContext, conversationState, userState);
+                    await GetApprovalOperations(turnContext, conversationState, userState, cancellationToken);
                     break;
                 case PdwResetStates.Completed:
                     await turnContext.SendActivityAsync($"İşleminiz tamamlanmıştır.");
@@ -81,43 +79,19 @@ namespace Daimler.Api.Bot
 
         }
 
-        public async Task GetApprovalOperations(ITurnContext<IMessageActivity> turnContext, PwdResetConversationStates conversationState, UserPasswordInfo userState)
+        public async Task GetApprovalOperations(ITurnContext<IMessageActivity> turnContext, PwdResetConversationStates conversationState, UserPasswordInfo userState, CancellationToken cancellationToken)
         {
             var approveText = turnContext.Activity.Text.Trim().ToLower();
-
+            //TODO: LUIS e input texti gönder....
+            var luisResult = await _luisRecognizer.RecognizeAsync(turnContext, cancellationToken);
             // onaylıyorum, tamam gibi intentler luise eklenebilir.
-            if (approveText == "evet")
+            if (luisResult.Intents.OrderBy(i => i.Value.Score).FirstOrDefault().Key == "Utilities_Confirm")
             {
                 await turnContext.SendActivityAsync($"Sayın {userState.UserName}, {userState.Application} uygulaması için şifre reset talebiniz alınmıştır.");
                 conversationState.CurrentState = PdwResetStates.Completed;
-                //Operations.ExcelCreator.Create(userState);
-
-                //TODO exceli burada oluştur
-                Excel.Application xlApp = new Microsoft.Office.Interop.Excel.Application();
-                Excel.Workbook xlWorkBook;
-                Excel.Worksheet xlWorkSheet;
-                object misValue = System.Reflection.Missing.Value;
-
-                xlWorkBook = xlApp.Workbooks.Add(misValue);
-                xlWorkSheet = (Excel.Worksheet)xlWorkBook.Worksheets.get_Item(1);
-
-                xlWorkSheet.Cells[1, 1] = "Application Name";
-                xlWorkSheet.Cells[1, 2] = "Email";
-                xlWorkSheet.Cells[1, 3] = "Username";
-                xlWorkSheet.Cells[2, 1] = userState.Application;
-                xlWorkSheet.Cells[2, 3] = userState.UserName;
-                xlWorkSheet.Cells[2, 2] = userState.Email;
-
-                xlApp.DisplayAlerts = false;
-                xlWorkBook.SaveAs("C:\\Users\\GunsuEskicioglu\\Desktop\\DaimlerChatbot\\" + userState.UserName + ".xlsx", Excel.XlFileFormat.xlOpenXMLWorkbook, misValue, misValue, misValue, misValue, Excel.XlSaveAsAccessMode.xlExclusive, misValue, misValue, misValue, misValue, misValue);
-                xlWorkBook.Close(true, misValue, misValue);
-                xlApp.Quit();
-
-                Marshal.ReleaseComObject(xlWorkSheet);
-                Marshal.ReleaseComObject(xlWorkBook);
-                Marshal.ReleaseComObject(xlApp);
+                Operations.ExcelCreator.Create(userState);
             }
-            else if (approveText == "hayır")
+            else if (luisResult.Intents.OrderBy(i => i.Value.Score).FirstOrDefault().Key == "Utilities_Cancel")
             {
                 await turnContext.SendActivityAsync($"{userState.UserName} talebiniz iptal edilmiştir.");
                 conversationState.CurrentState = PdwResetStates.Completed;
