@@ -70,7 +70,7 @@ namespace Daimler.Api.Bot
                     await GetApprovalOperations(turnContext, conversationState, userState, cancellationToken);
                     break;
                 case PdwResetStates.Completed:
-                    await turnContext.SendActivityAsync($"İşleminiz tamamlanmıştır.");
+                    //await turnContext.SendActivityAsync($"İşleminiz tamamlanmıştır.");
                     await turnContext.SendActivityAsync("Size başka bir konuda yardımcı olmamı ister misiniz?");
                     conversationState.CurrentState = PdwResetStates.Initial;
                     break;
@@ -185,23 +185,7 @@ namespace Daimler.Api.Bot
             //TODO: LUIS e input texti gönder....
             var luisResult = await _luisRecognizer.RecognizeAsync(turnContext, cancellationToken);
 
-            if (luisResult.Intents.OrderBy(i => i.Value.Score).FirstOrDefault().Key != "SifreReset")
-            {
-
-                if (userState.Counter > 2)
-                {
-                    await turnContext.SendActivityAsync("Sadece şifre resetleme yapabiliyorum diyorum. Niye inat ediyosun");
-                    userState.Counter = 0;
-                }
-                else
-                {
-                    await turnContext.SendActivityAsync("Sadece şifre resetleme yapabilirim.");
-                    userState.Counter++;
-                }
-
-
-            }
-            else
+            if (luisResult.Intents.OrderBy(i => i.Value.Score).FirstOrDefault().Key == "SifreReset")
             {
                 await turnContext.SendActivityAsync("Talebinizi gerçekleştirebilmemiz için aşağıdaki bilgileri doldurunuz.");
 
@@ -209,9 +193,32 @@ namespace Daimler.Api.Bot
                 t.Type = ActivityTypes.Message;
                 t.Attachments = new List<Attachment>() { CreateAdaptiveCardUsingJson() };
                 await turnContext.SendActivityAsync(t, cancellationToken);
-
+                userState.Counter = 0;
                 conversationState.CurrentState = PdwResetStates.GetInfo;
+
             }
+            else if (luisResult.Intents.OrderBy(i => i.Value.Score).FirstOrDefault().Key == "Intent2")
+            {
+                userState.Counter = 0;
+                await turnContext.SendActivityAsync("Bu konuyu yakın zamanda çözebilir hale geleceğim.");
+                await turnContext.SendActivityAsync("Size başka bir konuda yardımcı olmamı ister misiniz?");
+                conversationState.CurrentState = PdwResetStates.Initial;
+            }
+
+            else
+            {
+                if (userState.Counter > 2)
+                {
+                    await turnContext.SendActivityAsync("Belirttiğiniz konuda size yardımcı olamıyorum. Lütfen destek almak için 2222'yi arayınız.");
+                    //userState.Counter = 0;
+                }
+                else
+                {
+                    await turnContext.SendActivityAsync("Sizi anlayamadım, şimdilik sadece şifre resetleme işleminizde yardımcı olabilirim.");
+                    userState.Counter++;
+                }
+            }
+            
         }
 
 
